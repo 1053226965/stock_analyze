@@ -29,7 +29,7 @@ class ts_helper:
     try:
       rsp = self._pro.stock_basic(exchange='', list_status='L')
     except:
-      return False
+      return False, None
     return True, self._format(rsp)
 
   def get_profit_statement(self, market, code, start_date, end_date, period=None):
@@ -38,7 +38,7 @@ class ts_helper:
       rsp = self._pro.income(ts_code="{}.{}".format(code, market), start_date=start_date,\
         end_date=end_date, period=period)
     except:
-      return False
+      return False, None
     return True, self._format(rsp)
 
   def get_balance_sheet(self, market, code, start_date, end_date, period=None):
@@ -47,7 +47,7 @@ class ts_helper:
       rsp = self._pro.balancesheet(ts_code="{}.{}".format(code, market), start_date=start_date,\
         end_date=end_date, period=period)
     except:
-      return False
+      return False, None
     return True, self._format(rsp)
 
   def get_cash_flow_sheet(self, market, code, start_date, end_date, period=None):
@@ -56,7 +56,7 @@ class ts_helper:
       rsp = self._pro.cashflow(ts_code="{}.{}".format(code, market), start_date=start_date,\
         end_date=end_date, period=period)
     except:
-      return False
+      return False, None
     return True, self._format(rsp)
 
   def get_fina_indicator_sheet(self, market, code, start_date, end_date, period=None):
@@ -65,5 +65,5 @@ class ts_helper:
       rsp = self._pro.fina_indicator(ts_code="{}.{}".format(code, market), start_date=start_date,\
         end_date=end_date, period=period)
     except:
-      return False
+      return False, None
     return True, self._format(rsp)
