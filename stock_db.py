@@ -1,5 +1,6 @@
 import MySQLdb
 import logging
+import json
 
 g_mysql_config = {
   "host": "127.0.0.1",
@@ -12,7 +13,24 @@ class stock_db:
   def __init__(self):
     self._db = MySQLdb.connect(**g_mysql_config)
     self._cur = self._db.cursor()
+    self._insert_counter = 0
     self.prepare()
+
+  def __del__(self):
+    self._db.commit()
+    self._db.close()
+
+  def _try_commit(self):
+    self._insert_counter += 1
+    if self._insert_counter >= 300:
+      self._db.commit()
+      self._insert_counter = 0
+
+  def _get_annals_date_con(self, start_date, end_date):
+    ret = []
+    for y in range(int(start_date[0:4]), int(end_date[0:4]) + 1):
+      ret.append("end_date = '{}1231'".format(y))
+    return ret
 
   def prepare(self):
     try:
@@ -21,6 +39,18 @@ class stock_db:
       pass
 
     self._cur.execute("use stock")
+
+    try:
+      self._cur.execute("""
+        create table stocks(
+          market varchar(16),
+          code varchar(16),
+          json_str blob,
+          primary key(code, market)
+        )
+        """)
+    except MySQLdb.Error as _:
+      pass
 
     tables = ["profit_ss", "balance_ss", "cash_flow_ss", "fina_indicator_ss"]
     for table_name in tables:
@@ -31,12 +61,27 @@ class stock_db:
             code varchar(16),
             end_date varchar(8),
             json_str blob,
-            primary key(market, code, end_date)
+            primary key(code, end_date, market)
           )
           """.format(table_name))
       except MySQLdb.Error as _:
         pass
     self._db.commit()
+
+  def save_stocks(self, market, code, json_str):
+    try:
+      sql = """
+        insert into stocks(market, code, json_str) 
+        values('{}', '{}', compress('{}'))
+        """.format(market, code, json_str)
+      self._cur.execute(sql)
+      self._try_commit()
+      return True
+    except MySQLdb.Error as e:
+      if self._db.errno() != 1062:
+        logging.error("{}".format(e))
+        exit(-1)
+      return False
 
   def save_profit(self, market, code, end_date, json_str):
     try:
@@ -45,6 +90,7 @@ class stock_db:
         values('{}', '{}', '{}', compress('{}'))
         """.format(market, code, end_date, json_str)
       self._cur.execute(sql)
+      self._try_commit()
       return True
     except MySQLdb.Error as e:
       if self._db.errno() != 1062:
@@ -59,6 +105,7 @@ class stock_db:
         values('{}', '{}', '{}', compress('{}'))
         """.format(market, code, end_date, json_str)
       self._cur.execute(sql)
+      self._try_commit()
       return True
     except MySQLdb.Error as e:
       if self._db.errno() != 1062:
@@ -73,6 +120,7 @@ class stock_db:
         values('{}', '{}', '{}', compress('{}'))
         """.format(market, code, end_date, json_str)
       self._cur.execute(sql)
+      self._try_commit()
       return True
     except MySQLdb.Error as e:
       if self._db.errno() != 1062:
@@ -87,6 +135,7 @@ class stock_db:
         values('{}', '{}', '{}', compress('{}'))
         """.format(market, code, end_date, json_str)
       self._cur.execute(sql)
+      self._try_commit()
       return True
     except MySQLdb.Error as e:
       if self._db.errno() != 1062:
@@ -94,7 +143,41 @@ class stock_db:
         exit(-1)
     return False
 
-  def __del__(self):
-    self._db.commit()
-    self._db.close()
+  def get_stocks(self):
+    sql = "select uncompress(json_str) from stocks"
+    self._cur.execute(sql)
+    ret = []
+    for row in self._cur.fetchall():
+      ret.append(json.loads(row[0]))
+    return ret
 
+  def get_annals_indicator(self, market, code, start_date, end_date):
+    dates = self._get_annals_date_con(start_date, end_date)
+    date_condition = " or ".join(dates)
+    sql = """
+      select uncompress(json_str) as indicator from fina_indicator_ss 
+      where code = '{}' and ({}) and market = '{}'
+      """.format(code, date_condition, market)
+    
+    self._cur.execute(sql)
+    ret = []
+    for row in self._cur.fetchall():
+      indicator = json.loads(row[0])
+      simple_ind = {}
+      simple_ind["end_date"] = indicator.get("end_date", "")
+      simple_ind["roe"] = indicator.get("roe_waa", 0.0)
+      simple_ind["roe_dt"] = indicator.get("roe_dt", 0.0)
+      simple_ind["grossprofit_margin"] = indicator.get("grossprofit_margin", 0.0)
+      simple_ind["netprofit_margin"] = indicator.get("netprofit_margin", 0.0)
+      simple_ind["assets_turn"] = indicator.get("assets_turn", 0.0)
+      simple_ind["profit_to_gr"] = indicator.get("profit_to_gr", 0.0)
+      simple_ind["saleexp_to_gr"] = indicator.get("saleexp_to_gr", 0.0)
+      simple_ind["adminexp_of_gr"] = indicator.get("adminexp_of_gr", 0.0)
+      simple_ind["finaexp_of_gr"] = indicator.get("finaexp_of_gr", 0.0)
+      simple_ind["assets_to_eqt"] = indicator.get("assets_to_eqt", 0)
+      ret.append(simple_ind)
+    return sorted(ret, key=lambda item: item["end_date"])
+
+if __name__ == "__main__":
+  db = stock_db()
+  db.get_annals_indicator("SH", "600480", "20191231", "20191231")

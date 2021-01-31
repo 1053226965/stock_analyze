@@ -3,6 +3,7 @@ from stock_db import stock_db
 import time
 import json
 import logging
+from draw_indicator import stock_indicator
 
 g_req_time_gap = 1.5
 g_token = "0a6beff7740840989d6df56543a886003c3434e67ed1cbe7b8a3215b"
@@ -31,6 +32,7 @@ def save_sheets(stocks, req_func, save_func):
     code, market = stock["ts_code"].split(".")
     
     if not save_sheet(market, code, req_func, save_func):
+      logging.info("add {} {} to left_stocks".format(market, code))
       left_stocks.append(stock["ts_code"])
       time.sleep(3)
 
@@ -39,18 +41,45 @@ def save_sheets(stocks, req_func, save_func):
     if save_sheet(market, code, req_func, save_func):
       left_stocks.pop()
     else:
-      logging.warn("failed to get left stock {} {}".format(market, code))
+      time.sleep(3)
+      logging.warning("failed to get left stock {} {}".format(market, code))
 
-def main():
+def fetch_and_save():
   success, stocks = g_ts_helper.get_all_stock()
   if not success:
     logging.error("failed to get all stocks")
     return
 
+  for _, stock in stocks.items():
+    code, market = stock["ts_code"].split(".")
+    g_db.save_stocks(market, code, json.dumps(stock))
+  print("saved sotcks")
+
   save_sheets(stocks, g_ts_helper.get_profit_statement, g_db.save_profit)
+  print("saved profit sheets")
   save_sheets(stocks, g_ts_helper.get_balance_sheet, g_db.save_balance)
+  print("saved balance sheets")
   save_sheets(stocks, g_ts_helper.get_cash_flow_sheet, g_db.save_cash_flow)
+  print("saved cash_flow sheets")
   save_sheets(stocks, g_ts_helper.get_fina_indicator_sheet, g_db.save_fina_indicator)
+  print("saved indicator sheets")
+
+def get_reasonable_stock():
+  stocks = g_db.get_stocks()
+  for stock in stocks:
+    code, market = stock["ts_code"].split(".")
+    indicators = g_db.get_annals_indicator(market, code, "2010", "2020")
+
+    c = 0
+    for indi in indicators:
+      if indi["roe"] >= 20:
+        c += 1
+    if c > 5:
+      si = stock_indicator(market, code, "2010", "2020")
+      si.show()
+
+def main():
+  get_reasonable_stock()
 
 if __name__ == "__main__":
   logging.basicConfig(filename="stock.log", level= logging.INFO, format = '[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s')

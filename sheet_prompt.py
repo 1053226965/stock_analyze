@@ -471,3 +471,15 @@ g_fina_indicator_prompt = {
   "rd_exp": "研发费用",
   "update_flag": "更新标识"
 }
+
+def get_profit_prompt():
+  return g_profit_prompt
+
+def get_balance_prompt():
+  return g_balance_prompt
+
+def get_cash_flow_prompt():
+  return g_cash_flow_prompt
+
+def get_fina_indicator_prompt():
+  return g_fina_indicator_prompt
