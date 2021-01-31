@@ -6,7 +6,8 @@ g_mysql_config = {
   "host": "127.0.0.1",
   "port": 3306,
   "user": "root",
-  "passwd": "pzc123"
+  "passwd": "pzc123",
+  "charset": "utf8mb4"
 }
 
 class stock_db:
@@ -15,6 +16,23 @@ class stock_db:
     self._cur = self._db.cursor()
     self._insert_counter = 0
     self.prepare()
+
+    # self._cur.execute("drop table test")
+    # self._cur.execute("""
+    #     create table test(
+    #       market blob
+    #     )
+    #     """)
+    # print(json.dumps({'ss':'你好'}))
+    # print(json.loads(""" {"ss": "\u4f60\u597d"} """))
+    # self._cur.execute(r"""
+    #   insert into test values(compress('\u4e3b\u677f'))
+    #   """)
+    # self._cur.execute("""
+    #   select convert(uncompress(market) using utf8) from test
+    #   """)
+    # print(self._cur.fetchone()[0])
+    # exit(0)
 
   def __del__(self):
     self._db.commit()
@@ -69,6 +87,7 @@ class stock_db:
     self._db.commit()
 
   def save_stocks(self, market, code, json_str):
+    json_str = json_str.replace("\\", "\\\\")
     try:
       sql = """
         insert into stocks(market, code, json_str) 
@@ -144,7 +163,7 @@ class stock_db:
     return False
 
   def get_stocks(self):
-    sql = "select uncompress(json_str) from stocks"
+    sql = "select convert(uncompress(json_str) using utf8) from stocks"
     self._cur.execute(sql)
     ret = []
     for row in self._cur.fetchall():
@@ -155,7 +174,7 @@ class stock_db:
     dates = self._get_annals_date_con(start_date, end_date)
     date_condition = " or ".join(dates)
     sql = """
-      select uncompress(json_str) as indicator from fina_indicator_ss 
+      select convert(uncompress(json_str) using utf8mb4) as indicator from fina_indicator_ss 
       where code = '{}' and ({}) and market = '{}'
       """.format(code, date_condition, market)
     

@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
 import sheet_prompt
 from stock_db import stock_db
+import math
 
 class stock_indicator:
 
-  def __init__(self, market, code, start_date, end_date):
+  def __init__(self, market, code, name, start_date, end_date):
     self._db = stock_db()
     self._market = market
     self._code = code
+    self._name = name
     self._start_date = start_date
     self._end_date = end_date
 
@@ -18,20 +20,20 @@ class stock_indicator:
     x = []
     y = []
     for indi in rsp:
-      y.append(indi.get(indi_name, 0))
+      y.append(round(indi.get(indi_name, 0), 2))
       x.append(indi["end_date"][0:4])
     for a, b in zip(x, y):
-      plt.text(a, b + 0.3, b, ha='center', va='bottom', fontsize=8)
+      plt.text(a, b, b, color = "r", ha='center', va='bottom', fontsize=8)
     plt.plot(x, y, label=prompt)
 
   def _import_data_bar(self, rsp, indi_name, prompt):
     x = []
     y = []
     for indi in rsp:
-      y.append(indi.get(indi_name, 0))
+      y.append(round(indi.get(indi_name, 0), 2))
       x.append(indi["end_date"][0:4])
     for a, b in zip(x, y):
-      plt.text(a, b + 0.3, b, ha='center', va='bottom', fontsize=8)
+      plt.text(a, b + 0.3, b, color = "r", ha='center', va='bottom', fontsize=8)
     plt.bar(x, y, label=prompt)
 
     
@@ -40,7 +42,7 @@ class stock_indicator:
        self._start_date, self._end_date)
 
     fig = plt.figure(figsize=(8, 6))
-    fig.canvas.set_window_title("{} {}".format(self._market, self._code))
+    fig.canvas.set_window_title("{} {} {}".format(self._market, self._code, self._name))
 
     plt.subplot(3, 3, 1)
     self._import_data_polyline(rsp, "roe", "roe")
@@ -80,10 +82,12 @@ class stock_indicator:
     plt.subplot(3, 2, 6)
     self._import_data_bar(rsp, "assets_turn", "总资产周转率")
     plt.legend()
-    plt.ylim([0, 5])
+    plt.ylim([0, 10])
 
+    figManager = plt.get_current_fig_manager()
+    figManager.window.showMaximized()
     plt.show()
 
 if __name__ == "__main__":
-  s = stock_indicator("SZ", "002127", "2010", "2020")
+  s = stock_indicator("SZ", "000651", "", "2010", "2020")
   s.show()

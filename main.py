@@ -53,6 +53,7 @@ def fetch_and_save():
   for _, stock in stocks.items():
     code, market = stock["ts_code"].split(".")
     g_db.save_stocks(market, code, json.dumps(stock))
+  exit(0)
   print("saved sotcks")
 
   save_sheets(stocks, g_ts_helper.get_profit_statement, g_db.save_profit)
@@ -65,17 +66,22 @@ def fetch_and_save():
   print("saved indicator sheets")
 
 def get_reasonable_stock():
+  success, stocks = g_ts_helper.get_all_stock()
+  if not success:
+    logging.error("failed to get all stocks")
+    return
+
   stocks = g_db.get_stocks()
   for stock in stocks:
     code, market = stock["ts_code"].split(".")
     indicators = g_db.get_annals_indicator(market, code, "2010", "2020")
-
+    
     c = 0
     for indi in indicators:
       if indi["roe"] >= 20:
         c += 1
     if c > 5:
-      si = stock_indicator(market, code, "2010", "2020")
+      si = stock_indicator(market, code, stock["name"], "2010", "2020")
       si.show()
 
 def main():
